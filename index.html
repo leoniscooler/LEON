@@ -15,11 +15,11 @@
             height: 100vh;
             margin: 0;
         }
-        #score-container {
+        #score-container, #leon-counter {
             font-size: 24px;
             font-weight: bold;
             color: #776e65;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
         #game-container {
             width: 400px;
@@ -54,18 +54,72 @@
         .tile-EON { background-color: #f59563; }
         .tile-ON { background-color: #f67c5f; }
         .tile-LEN { background-color: #f9f86e; }
+
+        /* Glow and enlarge effect for LEON tile */
+        .tile-LEON.grow-glow {
+            animation: growGlow 1.5s ease-out forwards;
+        }
+
+        @keyframes growGlow {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 10px #ffdf00;
+            }
+            50% {
+                transform: scale(1.2);
+                box-shadow: 0 0 20px #ffdf00, 0 0 30px #ffdf00;
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 10px #ffdf00;
+            }
+        }
+
+        #instructions {
+            font-size: 18px;
+            color: #776e65;
+            margin-top: 20px;
+            text-align: center;
+        }
     </style>
 </head>
 <body>
     <div id="score-container">Score: 0</div>
+    <div id="leon-counter">LEONs Formed: 0</div> <!-- Added LEON counter -->
     <div id="game-container"></div>
+    
+    <!-- Game Instructions -->
+    <div id="instructions">
+        <h3>How to Play:</h3>
+        <p>
+            1. Use the arrow keys to play
+        </p>
+        <p>
+            2. Combine letters to form the word "LEON"
+        </p>
+        <p>
+             3. Reload the page if you have a skill issue and need to restart
+        </p>
+        <p>
+            Be careful about null words such as "LEN"
+        </p>
+        <p>
+            Try to beat Leon's personal record of 4 LEONs
+        </p>
+        <p>
+             Tell me your high scores so I can start a leaderboard on this website (Email: leon.zhao.us@gmail.com)
+        </p>
+    </div>
+
     <script>
         const container = document.getElementById('game-container');
         const scoreContainer = document.getElementById('score-container');
+        const leonCounterDisplay = document.getElementById('leon-counter');
+
         let board = Array.from(Array(4), () => Array(4).fill(''));
         let score = 0;
+        let leonCount = 0;
 
-        // Define all possible letters and combinations
         const letters = ['L', 'E', 'O', 'N'];
         const combinations = {
             'L': { 'E': 'LE', 'EO': 'LEO', 'EON': 'LEON', 'EN': 'LEN' },
@@ -83,6 +137,12 @@
             tile.innerText = value;
             tile.style.top = y * 100 + 'px';
             tile.style.left = x * 100 + 'px';
+
+            // If the tile is LEON, add the grow-glow effect
+            if (value === 'LEON') {
+                tile.classList.add('grow-glow');
+            }
+
             container.appendChild(tile);
             return tile;
         }
@@ -105,7 +165,6 @@
             });
             if (emptyCells.length > 0) {
                 const { x, y } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
-                // Spawn a random letter
                 board[y][x] = letters[Math.floor(Math.random() * letters.length)];
                 drawBoard();
             }
@@ -117,20 +176,15 @@
                 const current = newRow[i];
                 const next = newRow[i + 1];
 
-                // Check if current and next can combine in either direction
                 if (combinations[current] && combinations[current][next]) {
                     const combined = combinations[current][next];
                     newRow[i] = combined;
                     newRow.splice(i + 1, 1);
-
-                    // Update score based on combination
                     updateScore(current, next, combined);
                 } else if (combinations[next] && combinations[next][current]) {
                     const combined = combinations[next][current];
                     newRow[i] = combined;
                     newRow.splice(i + 1, 1);
-
-                    // Update score based on combination
                     updateScore(next, current, combined);
                 }
             }
@@ -142,6 +196,8 @@
             const bLength = b.length;
             if (combined === 'LEON') {
                 score += 100;
+                leonCount++; // Increment LEON counter
+                leonCounterDisplay.innerText = `LEONs Formed: ${leonCount}`;
             } else if (aLength === 1 && bLength === 1) {
                 score += 25;
             } else if (aLength === 1 && bLength === 2) {
@@ -194,14 +250,9 @@
         }
 
         window.addEventListener('keydown', (e) => {
-            switch (e.key) {
-                case 'ArrowLeft': move('left'); break;
-                case 'ArrowRight': move('right'); break;
-                case 'ArrowUp': move('up'); break;
-                case 'ArrowDown': move('down'); break;
+            if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
+                move(e.key.replace('Arrow', '').toLowerCase());
             }
-            // Always spawn a new letter after a move, regardless of direction
-            spawn();
         });
 
         function init() {
