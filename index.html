@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEON Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #faf8ef;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+        #score-container {
+            font-size: 24px;
+            font-weight: bold;
+            color: #776e65;
+            margin-bottom: 20px;
+        }
+        #game-container {
+            width: 400px;
+            height: 400px;
+            background-color: #bbada0;
+            border-radius: 10px;
+            position: relative;
+            overflow: hidden;
+        }
+        .tile {
+            width: 90px;
+            height: 90px;
+            background-color: #eee4da;
+            border-radius: 5px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2em;
+            font-weight: bold;
+            color: #776e65;
+            position: absolute;
+            transition: all 0.1s ease;
+        }
+        .tile-L { background-color: #f2b179; }
+        .tile-E { background-color: #f59563; }
+        .tile-O { background-color: #f67c5f; }
+        .tile-N { background-color: #f9f86e; }
+        .tile-LE { background-color: #edce71; }
+        .tile-LEO { background-color: #edc53f; }
+        .tile-LEON { background-color: #edc22e; }
+        .tile-EO { background-color: #f2b179; }
+        .tile-EON { background-color: #f59563; }
+        .tile-ON { background-color: #f67c5f; }
+        .tile-LEN { background-color: #f9f86e; }
+    </style>
+</head>
+<body>
+    <div id="score-container">Score: 0</div>
+    <div id="game-container"></div>
+    <script>
+        const container = document.getElementById('game-container');
+        const scoreContainer = document.getElementById('score-container');
+        let board = Array.from(Array(4), () => Array(4).fill(''));
+        let score = 0;
+
+        // Define all possible letters and combinations
+        const letters = ['L', 'E', 'O', 'N'];
+        const combinations = {
+            'L': { 'E': 'LE', 'EO': 'LEO', 'EON': 'LEON', 'EN': 'LEN' },
+            'E': { 'O': 'EO', 'N': 'EN' },
+            'O': { 'N': 'ON' },
+            'LE': { 'O': 'LEO', 'ON': 'LEON' },
+            'EO': { 'N': 'EON' },
+            'LEO': { 'N': 'LEON' },
+            'LEN': { 'O': 'LEON' }
+        };
+
+        function createTile(x, y, value) {
+            const tile = document.createElement('div');
+            tile.className = `tile tile-${value}`;
+            tile.innerText = value;
+            tile.style.top = y * 100 + 'px';
+            tile.style.left = x * 100 + 'px';
+            container.appendChild(tile);
+            return tile;
+        }
+
+        function drawBoard() {
+            container.innerHTML = '';
+            board.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value) createTile(x, y, value);
+                });
+            });
+        }
+
+        function spawn() {
+            const emptyCells = [];
+            board.forEach((row, y) => {
+                row.forEach((value, x) => {
+                    if (value === '') emptyCells.push({ x, y });
+                });
+            });
+            if (emptyCells.length > 0) {
+                const { x, y } = emptyCells[Math.floor(Math.random() * emptyCells.length)];
+                // Spawn a random letter
+                board[y][x] = letters[Math.floor(Math.random() * letters.length)];
+                drawBoard();
+            }
+        }
+
+        function merge(row) {
+            const newRow = row.filter(val => val);
+            for (let i = 0; i < newRow.length - 1; i++) {
+                const current = newRow[i];
+                const next = newRow[i + 1];
+
+                // Check if current and next can combine in either direction
+                if (combinations[current] && combinations[current][next]) {
+                    const combined = combinations[current][next];
+                    newRow[i] = combined;
+                    newRow.splice(i + 1, 1);
+
+                    // Update score based on combination
+                    updateScore(current, next, combined);
+                } else if (combinations[next] && combinations[next][current]) {
+                    const combined = combinations[next][current];
+                    newRow[i] = combined;
+                    newRow.splice(i + 1, 1);
+
+                    // Update score based on combination
+                    updateScore(next, current, combined);
+                }
+            }
+            return newRow.concat(Array(4 - newRow.length).fill(''));
+        }
+
+        function updateScore(a, b, combined) {
+            const aLength = a.length;
+            const bLength = b.length;
+            if (combined === 'LEON') {
+                score += 100;
+            } else if (aLength === 1 && bLength === 1) {
+                score += 25;
+            } else if (aLength === 1 && bLength === 2) {
+                score += 50;
+            } else if (aLength === 2 && bLength === 2) {
+                score += 75;
+            } else if (aLength === 1 && bLength === 3) {
+                score += 75;
+            }
+            scoreContainer.innerText = `Score: ${score}`;
+        }
+
+        function move(direction) {
+            let moved = false;
+            if (direction === 'left') {
+                for (let y = 0; y < 4; y++) {
+                    const originalRow = board[y];
+                    const newRow = merge(originalRow);
+                    if (newRow.toString() !== originalRow.toString()) moved = true;
+                    board[y] = newRow;
+                }
+            } else if (direction === 'right') {
+                for (let y = 0; y < 4; y++) {
+                    const originalRow = board[y].reverse();
+                    const newRow = merge(originalRow).reverse();
+                    if (newRow.toString() !== originalRow.reverse().toString()) moved = true;
+                    board[y] = newRow;
+                }
+            } else if (direction === 'up') {
+                for (let x = 0; x < 4; x++) {
+                    const originalCol = board.map(row => row[x]);
+                    const newCol = merge(originalCol);
+                    for (let y = 0; y < 4; y++) {
+                        board[y][x] = newCol[y];
+                    }
+                }
+            } else if (direction === 'down') {
+                for (let x = 0; x < 4; x++) {
+                    const originalCol = board.map(row => row[x]).reverse();
+                    const newCol = merge(originalCol).reverse();
+                    for (let y = 0; y < 4; y++) {
+                        board[y][x] = newCol[y];
+                    }
+                }
+            }
+            if (moved) {
+                spawn();
+            }
+            drawBoard();
+        }
+
+        window.addEventListener('keydown', (e) => {
+            switch (e.key) {
+                case 'ArrowLeft': move('left'); break;
+                case 'ArrowRight': move('right'); break;
+                case 'ArrowUp': move('up'); break;
+                case 'ArrowDown': move('down'); break;
+            }
+            // Always spawn a new letter after a move, regardless of direction
+            spawn();
+        });
+
+        function init() {
+            spawn();
+            spawn();
+            drawBoard();
+        }
+
+        init();
+    </script>
+</body>
+</html>
